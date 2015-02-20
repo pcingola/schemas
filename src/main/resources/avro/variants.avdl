@@ -2,7 +2,8 @@
 protocol Variants {
 
 import idl "common.avdl";
-
+import idl "metadata.avdl";
+ 
 /**
 This metadata represents VCF header information.
 */
@@ -151,6 +152,175 @@ record Call {
   map<array<string>> info = {};
 }
 
+/** TODO: Add more regulatory features. 
+          Move to common or annotation?
+*/
+enum GenomicFeatureType {
+  TRANSCRIPT, 
+  EXON,
+  INTRON,
+  MICRO_RNA, 
+  REGULATORY_ELEMENT, 
+  MOTIF
+}
+
+/**
+An AnalysisResult record the output of a prediction package such as Sift
+on a specific allele 
+*/
+record AnalysisResult {
+
+  /** Alternate allele - variant may have >1 alt which will have distinct 
+  analysis results. This is not be needed for the graph/allele model 
+  */
+  union { null, string} alternateBase = null;
+
+  /** The analysis record for this result (defined in metadata schema)
+  */
+  Analysis analysis;
+
+  /** The text-based result for this analysis
+  */
+  union { null, string} analysisResult;
+
+  /** The numeric score for this analysis 
+  */
+  union { null, float} analysisScore;
+}
+
+/**
+  Impact is a simple prioritization for Annotation.
+
+  IMPORTANT:
+    Prioritization methods are a crude estimates and are not assumed to be
+    reliable: e.g a 'HIGH' Impact may actually not cause any disruption
+    in protein function or expression.
+*/
+enum Impact {
+  HIGH,      // Variant highly disrupts protein function
+  MODERATE,  // Moderately disrupts protein function
+  LOW,       // Low disruption of protein impact
+  MODIFIER   // No known effect
+}
+
+/**
+An annotation record is a set of information describing the effect of an
+allele on another genomic feature
+
+To do (all these can be easily added after the PR has been accepted): 
+  1) Make sure transctipt records contain:
+    - Biotype (according to HAVANA types)
+    - cdnaLength
+    - cdsLength
+    - proteinLength
+    - tls (Transcript Level Support) or 'isCanonical'
+
+  2) Split into coding and non-coding records
+  3) Clinical impact 
+  4) Consistency with HGVS: Do we require annotating the "most 3­prime
+     coordinate" as HGVS does? 
+       i) If we do, then variant coordinates and annotation coordinates may 
+          not match (we should inform the 'new coordinates' somewhere).
+
+       ii) If we don't, then variant annotation may not match HGVS.p 
+           anntation, which is extremelly confusing.
+
+Comments: 
+  1) We may want to annotate respect to specific exon 
+     (i.e. featureId = exonId instead of transcriptId) in order to know 
+     more detailed information (exon rank, exon splice type, etc.)
+  2) Effects sort order: People prefer to see 'most deleterious' / 'most 
+     important transcripts' first. Should we add this here or should it 
+     be left for the 'presentation' layer?. It doesn't hurt to suggest 
+     an order...
+  3) Gene name has to be retrieve via: Exon -> Transcript -> Gene. It might 
+     be too indirect for common queries (e.g. get all high impact varints 
+     in 'BRAC1')
+*/
+record Annotation {
+
+  /** The feature ID. Links to sequence annotation record
+  */
+  string featureId;
+
+  /** The feature type
+  */
+  GenomicFeatureType genomicFeatureType;
+
+  /** Effect of variant on this feature (Sequence Ontology term)
+  */
+  array<OntologyTerm> effects;
+
+  /** Putative impact for each effect
+  */
+  array<Impact> impacts;
+
+  /** HGVS formatted annotation at genomic, transcript and protein level
+  */
+  union { null, string } HGVSg = null;
+  union { null, string } HGVSc = null;
+  union { null, string } HGVSp = null;
+  
+  /** Location information
+  */
+
+  /** Relative position of base in cDNA sequence 
+      Note: The coresponding cdnaLength field should be available 
+            in transcript's record
+  */
+  union { null, int} cdnaPosition = null; 
+
+  /** Relative position of base in coding sequence  
+      Note: The coresponding cdsLength field should be available 
+            in transcript's record
+  */
+  union { null, int} cdsPosition = null; 
+
+  /** Relative position of amino acid in protein  
+      Note: The coresponding proteinLength field should be available 
+            in transcript's record
+  */
+  union { null, int} proteinPosition = null; 
+
+  /** Reference/Alt allele information
+  */
+
+  /** Alternate allele - variant may have >1 alt which will have distinct 
+  annotation. This is not be needed for the graph/allele model 
+  */
+  union { null, string} alternateBases = null;
+ 
+  /**
+    Genotype reference.
+    This is used when a reference (different than the standard reference genome)
+    is used to calculate the effects, typically for cancer samples when
+    germline and somatic differ from reference genome. Since we are interested
+    in somatic effect respect to germline, germinle variant acts as reference 
+	(instead of using  the reference genome).
+  */
+  union {null, string} referenceBases = null;
+
+  /** Reference Amino Acid
+  */
+  union { null, string } referenceAminoAcid = null;
+
+  /** Alternate Amino Acid
+  */
+  union { null, string } alternateAminoAcid  = null;
+
+  /** Codon observed in reference 
+  */
+  union { null, string } referenceCodon = null;
+
+  /** Codon created by alt alternate allele
+  */
+  union { null, string } alternateCodon = null;
+
+  /** Output from prediction packages such as Sift
+  */
+  array<AnalysisResult> analysisResults;
+}
+
 /**
 A `Variant` represents a change in DNA sequence relative to some reference.
 For example, a variant could represent a SNP or an insertion.
@@ -214,6 +384,12 @@ record Variant {
   determination of genotype with respect to this variant.
   */
   array<Call> calls = [];
+
+  /**
+  The annotation for this particular allele/variant. Each one represents
+  effect of an allele on a genomic feature (eg a transcript).
+  */
+  array<Annotation> annotation = [];
 }
 
 }

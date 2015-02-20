@@ -67,6 +67,25 @@ record SearchVariantsRequest {
   */
   union { null, array<string> } callSetIds = null;
 
+  /**
+  Only return variant annotations  with these effects (SO term IDs).
+  If null, returns all variant annotations.
+  */
+  union { null, array<string> } effects = null;
+
+  /**
+  Only return variants annotated with any of these genes
+  Todo: Merge with genome annotation gene model
+  */
+  union { null, array<string> } geneIds;
+
+  /**
+  Only return variants annotated with any of these transcript IDs
+  Todo: Merge with genome annotation transcript model
+  */
+  union { null, array<string> } transcriptIds;
+
+
   /** Required. Only return variants on this reference. */
   string referenceName;
 

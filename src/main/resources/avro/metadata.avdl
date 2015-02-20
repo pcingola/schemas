@@ -93,7 +93,7 @@ record Individual {
   union { null, OntologyTerm } species = null;
 
   /** The genetic sex of this individual. Use `null` when unknown. */
-  GeneticSex sex = null;
+  union { null, GeneticSex } sex = null;
 
   /**
   The developmental stage of this individual. Using Uberon is recommended.
@@ -359,7 +359,7 @@ record Analysis {
   union { null, string } type = null;
 
   /** The software run to generate this analysis. */
-  array<string> software = null;
+  union { null, array<string> } software = null;
 
   /**
   A map of additional analysis information.
